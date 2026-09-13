@@ -1,211 +1,127 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
+  FlatList,
+  RefreshControl,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 
-// 1. Reusable AppButton Component
-type AppButtonProps = {
-  title: string;
-  onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'danger';
-  disabled?: boolean;
-  loading?: boolean;
-};
+// Generate 5,000 mock data items
+const GENERATED_DATA = Array.from({ length: 5000 }, (_, index) => ({
+  id: `item-${index}`,
+  name: `Item #${index + 1} - Sample Note Record`,
+}));
 
-export function AppButton({
-  title,
-  onPress,
-  variant = 'primary',
-  disabled = false,
-  loading = false,
-}: AppButtonProps) {
-  const isInteractive = !disabled && !loading;
+export default function Day5Screen() {
+  const [mode, setMode] = useState<'flatlist' | 'scrollview'>('flatlist');
+  const [refreshing, setRefreshing] = useState(false);
+  const [mountTime, setMountTime] = useState<number | null>(null);
 
-  return (
-    <Pressable
-      onPress={isInteractive ? onPress : undefined}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: !isInteractive, busy: loading }}
-      hitSlop={8}
-      android_ripple={
-        isInteractive
-          ? { color: 'rgba(255, 255, 255, 0.2)', borderless: false }
-          : undefined
-      }
-      style={({ pressed }) => [
-        styles.buttonBase,
-        styles[variant],
-        disabled && styles.disabled,
-        // Opacity feedback for iOS
-        pressed && isInteractive && Platform.OS === 'ios' && styles.pressed,
-      ]}
-    >
-      {loading ? (
-        <ActivityIndicator color="#ffffff" />
-      ) : (
-        <Text style={styles.buttonText}>{title}</Text>
-      )}
-    </Pressable>
-  );
-}
+  const handleModeSwitch = (newMode: 'flatlist' | 'scrollview') => {
+    const start = performance.now();
+    setMode(newMode);
+    // Measure render cycle completion
+    setTimeout(() => {
+      const end = performance.now();
+      setMountTime(Math.round(end - start));
+    }, 0);
+  };
 
-// 2. Main Day 4 Screen
-export default function Day4Screen() {
-  const [loading, setLoading] = useState(false);
-
-  const handlePress = () => {
-    setLoading(true);
-    setTimeout(() => setLoading(false), 2000);
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1500);
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Day 4 — Touch & Press</Text>
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.header}>Day 5 — Lists & Virtualization</Text>
 
-      {/* Button Variants */}
-      <View style={styles.section}>
-        <Text style={styles.label}>AppButton Variants</Text>
-        <AppButton
-          title="Primary Button"
-          onPress={handlePress}
-          variant="primary"
-          loading={loading}
-        />
-        <AppButton
-          title="Secondary Button"
-          onPress={handlePress}
-          variant="secondary"
-        />
-        <AppButton
-          title="Danger Button"
-          onPress={handlePress}
-          variant="danger"
-        />
-        <AppButton title="Disabled Button" onPress={handlePress} disabled />
-      </View>
-
-      {/* 24x24 Icon Button with hitSlop */}
-      <View style={styles.section}>
-        <Text style={styles.label}>
-          24x24 Icon Button (Effective Target ~48pt via hitSlop)
-        </Text>
-        <Pressable
-          onPress={() => alert('Icon Tapped!')}
-          hitSlop={12} // 24 + 12 top/bottom/left/right = 48x48
-          accessibilityRole="button"
-          style={({ pressed }) => [
-            styles.iconButton,
-            pressed && styles.pressed,
-          ]}
+      {/* Switcher Controls */}
+      <View style={styles.toggleRow}>
+        <TouchableOpacity
+          style={[styles.toggleBtn, mode === 'flatlist' && styles.activeBtn]}
+          onPress={() => handleModeSwitch('flatlist')}
         >
-          <Text style={{ color: '#fff', fontSize: 12 }}>★</Text>
-        </Pressable>
+          <Text style={styles.btnText}>Use FlatList</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleBtn, mode === 'scrollview' && styles.activeBtn]}
+          onPress={() => handleModeSwitch('scrollview')}
+        >
+          <Text style={styles.btnText}>Use ScrollView</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Bounds Clipping Bug Demo */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Bounds Clipping Demo</Text>
-        <Text style={styles.subtext}>
-          The red box overflows its parent. Tap the overflowing part—it won't
-          trigger because touches cannot escape parent bounds!
+      {/* Metric Display */}
+      <View style={styles.metricBox}>
+        <Text style={styles.metricText}>
+          Current Mode: <Text style={styles.highlight}>{mode.toUpperCase()}</Text>
         </Text>
-        <View style={styles.parentBox}>
-          <Pressable
-            onPress={() => alert('Parent Bound Tap Worked!')}
-            style={styles.overflowingChild}
-          >
-            <Text style={{ color: '#fff', fontSize: 10 }}>Overflow Touch</Text>
-          </Pressable>
-        </View>
+        <Text style={styles.metricText}>
+          Estimated Mount Time: <Text style={styles.highlight}>{mountTime !== null ? `${mountTime} ms` : 'N/A'}</Text>
+        </Text>
       </View>
-    </ScrollView>
+
+      {/* Conditional List Rendering */}
+      {mode === 'flatlist' ? (
+        <FlatList
+          data={GENERATED_DATA}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.row}>
+              <Text style={styles.rowText}>{item.name}</Text>
+            </View>
+          )}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#0a84ff"
+            />
+          }
+          ListEmptyComponent={<Text style={styles.emptyText}>No Items Found</Text>}
+        />
+      ) : (
+        <ScrollView
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#0a84ff"
+            />
+          }
+        >
+          {GENERATED_DATA.map((item) => (
+            <React.Fragment key={item.id}>
+              <View style={styles.row}>
+                <Text style={styles.rowText}>{item.name}</Text>
+              </View>
+              <View style={styles.separator} />
+            </React.Fragment>
+          ))}
+        </ScrollView>
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    paddingTop: 60,
-    backgroundColor: '#121212',
-    flexGrow: 1,
-  },
-  header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 20,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#a1a1a1',
-    marginBottom: 10,
-  },
-  subtext: {
-    fontSize: 12,
-    color: '#8e8e93',
-    marginBottom: 10,
-  },
-  buttonBase: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  primary: {
-    backgroundColor: '#0a84ff',
-  },
-  secondary: {
-    backgroundColor: '#3a3a3c',
-  },
-  danger: {
-    backgroundColor: '#ff453a',
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  iconButton: {
-    width: 24,
-    height: 24,
-    backgroundColor: '#3a3a3c',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  parentBox: {
-    width: 200,
-    height: 50,
-    backgroundColor: '#1e1e1e',
-    borderWidth: 1,
-    borderColor: '#333',
-    overflow: 'visible',
-  },
-  overflowingChild: {
-    position: 'absolute',
-    top: 25,
-    left: 100,
-    width: 120,
-    height: 50,
-    backgroundColor: '#ff3b30',
-    justify: 'center',
-    alignItems: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#121212', paddingHorizontal: 16, paddingTop: 40 },
+  header: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 16 },
+  toggleRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  toggleBtn: { flex: 1, paddingVertical: 12, backgroundColor: '#1e1e1e', borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: '#333' },
+  activeBtn: { backgroundColor: '#0a84ff', borderColor: '#0a84ff' },
+  btnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  metricBox: { backgroundColor: '#1e1e1e', padding: 12, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: '#333' },
+  metricText: { color: '#a1a1a1', fontSize: 14, marginBottom: 4 },
+  highlight: { color: '#fff', fontWeight: 'bold' },
+  row: { paddingVertical: 14, paddingHorizontal: 12 },
+  rowText: { color: '#ffffff', fontSize: 15 },
+  separator: { height: 1, backgroundColor: '#2c2c2e' },
+  emptyText: { color: '#8e8e93', textAlign: 'center', marginTop: 20 },
 });
