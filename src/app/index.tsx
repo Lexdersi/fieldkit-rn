@@ -1,175 +1,211 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
-  Keyboard,
-  KeyboardAvoidingView,
+  ActivityIndicator,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 
-export default function NoteComposer() {
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [tag, setTag] = useState('');
+// 1. Reusable AppButton Component
+type AppButtonProps = {
+  title: string;
+  onPress: () => void;
+  variant?: 'primary' | 'secondary' | 'danger';
+  disabled?: boolean;
+  loading?: boolean;
+};
 
-  // Ref for focus management from Title -> Body
-  const bodyRef = useRef<TextInput>(null);
+export function AppButton({
+  title,
+  onPress,
+  variant = 'primary',
+  disabled = false,
+  loading = false,
+}: AppButtonProps) {
+  const isInteractive = !disabled && !loading;
 
-  // Validation: Title required & max 60 chars
-  const isTitleInvalid = title.trim().length === 0 || title.length > 60;
+  return (
+    <Pressable
+      onPress={isInteractive ? onPress : undefined}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !isInteractive, busy: loading }}
+      hitSlop={8}
+      android_ripple={
+        isInteractive
+          ? { color: 'rgba(255, 255, 255, 0.2)', borderless: false }
+          : undefined
+      }
+      style={({ pressed }) => [
+        styles.buttonBase,
+        styles[variant],
+        disabled && styles.disabled,
+        // Opacity feedback for iOS
+        pressed && isInteractive && Platform.OS === 'ios' && styles.pressed,
+      ]}
+    >
+      {loading ? (
+        <ActivityIndicator color="#ffffff" />
+      ) : (
+        <Text style={styles.buttonText}>{title}</Text>
+      )}
+    </Pressable>
+  );
+}
 
-  const handleSave = () => {
-    if (isTitleInvalid) return;
-    alert(`Note Saved!\nTitle: ${title}\nTag: ${tag}`);
+// 2. Main Day 4 Screen
+export default function Day4Screen() {
+  const [loading, setLoading] = useState(false);
+
+  const handlePress = () => {
+    setLoading(true);
+    setTimeout(() => setLoading(false), 2000);
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.header}>Day 4 — Touch & Press</Text>
+
+      {/* Button Variants */}
+      <View style={styles.section}>
+        <Text style={styles.label}>AppButton Variants</Text>
+        <AppButton
+          title="Primary Button"
+          onPress={handlePress}
+          variant="primary"
+          loading={loading}
+        />
+        <AppButton
+          title="Secondary Button"
+          onPress={handlePress}
+          variant="secondary"
+        />
+        <AppButton
+          title="Danger Button"
+          onPress={handlePress}
+          variant="danger"
+        />
+        <AppButton title="Disabled Button" onPress={handlePress} disabled />
+      </View>
+
+      {/* 24x24 Icon Button with hitSlop */}
+      <View style={styles.section}>
+        <Text style={styles.label}>
+          24x24 Icon Button (Effective Target ~48pt via hitSlop)
+        </Text>
+        <Pressable
+          onPress={() => alert('Icon Tapped!')}
+          hitSlop={12} // 24 + 12 top/bottom/left/right = 48x48
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.iconButton,
+            pressed && styles.pressed,
+          ]}
         >
-          <Text style={styles.header}>Note Composer</Text>
+          <Text style={{ color: '#fff', fontSize: 12 }}>★</Text>
+        </Pressable>
+      </View>
 
-          {/* Title Input */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Title *</Text>
-            <TextInput
-              style={[styles.input, isTitleInvalid && styles.inputError]}
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Enter title..."
-              placeholderTextColor="#8e8e93"
-              returnKeyType="next"
-              onSubmitEditing={() => bodyRef.current?.focus()}
-              blurOnSubmit={false}
-              maxLength={60}
-            />
-            {/* Accessibility Character Counter */}
-            <Text
-              style={styles.charCounter}
-              accessibilityLiveRegion="polite"
-            >
-              {60 - title.length} characters remaining
-            </Text>
-          </View>
-
-          {/* Body Input */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Body</Text>
-            <TextInput
-              ref={bodyRef}
-              style={[styles.input, styles.multilineInput]}
-              value={body}
-              onChangeText={setBody}
-              placeholder="Write your note here..."
-              placeholderTextColor="#8e8e93"
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-          </View>
-
-          {/* Tag Input */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Tag</Text>
-            <TextInput
-              style={styles.input}
-              value={tag}
-              onChangeText={setTag}
-              placeholder="e.g. Work, Ideas"
-              placeholderTextColor="#8e8e93"
-              autoCapitalize="words"
-              autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={Keyboard.dismiss}
-            />
-          </View>
-
-          {/* Save Button */}
-          <TouchableOpacity
-            style={[styles.button, isTitleInvalid && styles.buttonDisabled]}
-            onPress={handleSave}
-            disabled={isTitleInvalid}
+      {/* Bounds Clipping Bug Demo */}
+      <View style={styles.section}>
+        <Text style={styles.label}>Bounds Clipping Demo</Text>
+        <Text style={styles.subtext}>
+          The red box overflows its parent. Tap the overflowing part—it won't
+          trigger because touches cannot escape parent bounds!
+        </Text>
+        <View style={styles.parentBox}>
+          <Pressable
+            onPress={() => alert('Parent Bound Tap Worked!')}
+            style={styles.overflowingChild}
           >
-            <Text style={styles.buttonText}>Save Note</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+            <Text style={{ color: '#fff', fontSize: 10 }}>Overflow Touch</Text>
+          </Pressable>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#121212',
-  },
-  scrollContent: {
     padding: 20,
     paddingTop: 60,
+    backgroundColor: '#121212',
     flexGrow: 1,
   },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#fff',
     marginBottom: 20,
   },
-  fieldGroup: {
-    marginBottom: 16,
+  section: {
+    marginBottom: 24,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
     color: '#a1a1a1',
-    marginBottom: 6,
+    marginBottom: 10,
   },
-  input: {
-    backgroundColor: '#1e1e1e',
-    color: '#ffffff',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
-  inputError: {
-    borderColor: '#ff453a',
-  },
-  multilineInput: {
-    minHeight: 100,
-  },
-  charCounter: {
+  subtext: {
     fontSize: 12,
     color: '#8e8e93',
-    textAlign: 'right',
-    marginTop: 4,
+    marginBottom: 10,
   },
-  button: {
-    backgroundColor: '#0a84ff',
-    borderRadius: 8,
+  buttonBase: {
     paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 10,
+    marginBottom: 10,
   },
-  buttonDisabled: {
+  primary: {
+    backgroundColor: '#0a84ff',
+  },
+  secondary: {
     backgroundColor: '#3a3a3c',
   },
+  danger: {
+    backgroundColor: '#ff453a',
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
   buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
+    color: '#fff',
     fontWeight: '600',
+    fontSize: 16,
+  },
+  iconButton: {
+    width: 24,
+    height: 24,
+    backgroundColor: '#3a3a3c',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  parentBox: {
+    width: 200,
+    height: 50,
+    backgroundColor: '#1e1e1e',
+    borderWidth: 1,
+    borderColor: '#333',
+    overflow: 'visible',
+  },
+  overflowingChild: {
+    position: 'absolute',
+    top: 25,
+    left: 100,
+    width: 120,
+    height: 50,
+    backgroundColor: '#ff3b30',
+    justify: 'center',
+    alignItems: 'center',
   },
 });
