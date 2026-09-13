@@ -1,127 +1,175 @@
-import { DynamicColorIOS, Platform, PlatformColor, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native';
 
-// Custom ThemedText Component (Required for Day 2)
-export function ThemedText({ style, children, ...props }: any) {
-  const textColor = Platform.select({
-    ios: DynamicColorIOS({ light: '#11181c', dark: '#ecedee' }),
-    android: PlatformColor('?android:attr/textColorPrimary'),
-    default: '#11181c',
-  });
+export default function NoteComposer() {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [tag, setTag] = useState('');
+
+  // Ref for focus management from Title -> Body
+  const bodyRef = useRef<TextInput>(null);
+
+  // Validation: Title required & max 60 chars
+  const isTitleInvalid = title.trim().length === 0 || title.length > 60;
+
+  const handleSave = () => {
+    if (isTitleInvalid) return;
+    alert(`Note Saved!\nTitle: ${title}\nTag: ${tag}`);
+  };
 
   return (
-    <Text style={[{ color: textColor }, style]} {...props}>
-      {children}
-    </Text>
-  );
-}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.header}>Note Composer</Text>
 
-export default function Day2DrillScreen() {
-  const longMessage = "This is a 400+ character long message designed to test flex behavior in React Native. It needs to grow and fill available space, wrap properly across multiple lines, and defend the layout so that the timestamp on the right never gets squeezed out of view or clipped off the edge of the screen, regardless of how much text is rendered here!";
+          {/* Title Input */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Title *</Text>
+            <TextInput
+              style={[styles.input, isTitleInvalid && styles.inputError]}
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Enter title..."
+              placeholderTextColor="#8e8e93"
+              returnKeyType="next"
+              onSubmitEditing={() => bodyRef.current?.focus()}
+              blurOnSubmit={false}
+              maxLength={60}
+            />
+            {/* Accessibility Character Counter */}
+            <Text
+              style={styles.charCounter}
+              accessibilityLiveRegion="polite"
+            >
+              {60 - title.length} characters remaining
+            </Text>
+          </View>
 
-  return (
-    <ScrollView style={styles.screen}>
-      {/* PART ONE: Web Port Component */}
-      <Text style={styles.sectionHeader}>Part 1: Web Port</Text>
-      <View style={styles.cardContainer}>
-        <View style={styles.card}><Text>Card 1</Text></View>
-        <View style={styles.card}><Text>Card 2</Text></View>
-        <View style={styles.card}><Text>Card 3</Text></View>
-      </View>
+          {/* Body Input */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Body</Text>
+            <TextInput
+              ref={bodyRef}
+              style={[styles.input, styles.multilineInput]}
+              value={body}
+              onChangeText={setBody}
+              placeholder="Write your note here..."
+              placeholderTextColor="#8e8e93"
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+          </View>
 
-      {/* PART TWO: Chat Bubble Row Component */}
-      <Text style={styles.sectionHeader}>Part 2: Chat Bubble Row</Text>
-      <View style={styles.chatRow}>
-        {/* 1. Avatar (40dp) + Absolute Unread Dot */}
-        <View style={styles.avatarContainer}>
-          <View style={styles.avatar} />
-          <View style={styles.unreadDot} />
-        </View>
+          {/* Tag Input */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Tag</Text>
+            <TextInput
+              style={styles.input}
+              value={tag}
+              onChangeText={setTag}
+              placeholder="e.g. Work, Ideas"
+              placeholderTextColor="#8e8e93"
+              autoCapitalize="words"
+              autoCorrect={false}
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
+            />
+          </View>
 
-        {/* 2. Message Body (Grows & Wraps) */}
-        <View style={styles.messageBody}>
-          <ThemedText style={styles.messageText}>{longMessage}</ThemedText>
-        </View>
-
-        {/* 3. Timestamp (Never Shrinks) */}
-        <View style={styles.timestampContainer}>
-          <ThemedText style={styles.timestampText}>11:42 AM</ThemedText>
-        </View>
-      </View>
-    </ScrollView>
+          {/* Save Button */}
+          <TouchableOpacity
+            style={[styles.button, isTitleInvalid && styles.buttonDisabled]}
+            onPress={handleSave}
+            disabled={isTitleInvalid}
+          >
+            <Text style={styles.buttonText}>Save Note</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
+  container: {
     flex: 1,
+    backgroundColor: '#121212',
+  },
+  scrollContent: {
+    padding: 20,
     paddingTop: 60,
-    paddingHorizontal: 16,
-    backgroundColor: '#f8fafc',
+    flexGrow: 1,
   },
-  sectionHeader: {
-    fontSize: 18,
+  header: {
+    fontSize: 24,
     fontWeight: 'bold',
-    marginVertical: 12,
-    color: '#0f172a',
+    color: '#ffffff',
+    marginBottom: 20,
   },
-  // Part 1 Styles: Ported Web Snippet
-  cardContainer: {
-    flexDirection: 'row', // [1] RN defaults to 'column'
-    flexWrap: 'wrap',
-    alignContent: 'flex-start', // [2] Web defaults to 'stretch'
-    gap: 16, // [3] Unitless dp instead of '16px'
-    marginBottom: 24,
+  fieldGroup: {
+    marginBottom: 16,
   },
-  card: {
-    width: 100,
-    height: 60,
-    backgroundColor: '#e2e8f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-  },
-  // Part 2 Styles: Chat Bubble Row
-  chatRow: {
-    flexDirection: 'row', // Align elements horizontally
-    alignItems: 'flex-start',
-    gap: 12,
-    padding: 12,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-  },
-  avatarContainer: {
-    position: 'relative', // Relative container for absolute dot
-    width: 40,
-    height: 40,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#cbd5e1',
-  },
-  unreadDot: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#ef4444',
-  },
-  messageBody: {
-    flex: 1, // Allows body to expand and take up remaining space
-    flexShrink: 1, // Forces wrapping instead of pushing out the timestamp
-  },
-  messageText: {
+  label: {
     fontSize: 14,
-    lineHeight: 20,
+    fontWeight: '600',
+    color: '#a1a1a1',
+    marginBottom: 6,
   },
-  timestampContainer: {
-    flexShrink: 0, // Prevents long messages from shrinking the timestamp
+  input: {
+    backgroundColor: '#1e1e1e',
+    color: '#ffffff',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
-  timestampText: {
+  inputError: {
+    borderColor: '#ff453a',
+  },
+  multilineInput: {
+    minHeight: 100,
+  },
+  charCounter: {
     fontSize: 12,
-    color: '#64748b',
+    color: '#8e8e93',
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  button: {
+    backgroundColor: '#0a84ff',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonDisabled: {
+    backgroundColor: '#3a3a3c',
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
