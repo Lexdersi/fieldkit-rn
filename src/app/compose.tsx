@@ -1,53 +1,81 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useNotes } from '../context/NotesContext';
+import { Alert, Button, StyleSheet, TextInput, View } from 'react-native';
 
 export default function ComposeScreen() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const { addNote } = useNotes();
-  const router = useRouter();
 
-  const handleSave = () => {
+  const createNoteMutation = useMutation({
+    mutationFn: async (newNote: { title: string; content: string }) => {
+      const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
+        method: 'POST',
+        body: JSON.stringify(newNote),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return response.json();
+    },
+    onMutate: async (newNote) => {
+      await queryClient.cancelQueries({ queryKey: ['notes'] });
+      const previousNotes = queryClient.getQueryData(['notes']);
+
+      queryClient.setQueryData(['notes'], (old: any[] = []) => [
+        { id: `temp-${Date.now()}`, ...newNote, pending: true },
+        ...old,
+      ]);
+
+      return { previousNotes };
+    },
+    onError: (err, newNote, context: any) => {
+      if (context?.previousNotes) {
+        queryClient.setQueryData(['notes'], context.previousNotes);
+      }
+      Alert.alert('Offline Mode', 'Note saved locally and will sync when reconnected.');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+  });
+
+  const handleSubmit = () => {
     if (!title.trim()) return;
-    addNote(title, content);
-    router.back();
+    createNoteMutation.mutate(
+      { title, content },
+      {
+        onSuccess: () => {
+          router.back(); // Return to list view after submission
+        },
+      }
+    );
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Note Title</Text>
-      <TextInput 
-        style={styles.input} 
-        placeholder="Enter title..." 
-        placeholderTextColor="#666"
+      <TextInput
+        style={styles.input}
+        placeholder="Note Title"
+        placeholderTextColor="#888"
         value={title}
         onChangeText={setTitle}
       />
-
-      <Text style={styles.label}>Content</Text>
-      <TextInput 
-        style={[styles.input, styles.textArea]} 
-        placeholder="Write details..." 
-        placeholderTextColor="#666"
+      <TextInput
+        style={[styles.input, styles.textArea]}
+        placeholder="Write your note content here..."
+        placeholderTextColor="#888"
         multiline
         value={content}
         onChangeText={setContent}
       />
-
-      <TouchableOpacity style={styles.button} onPress={handleSave}>
-        <Text style={styles.buttonText}>Save Note</Text>
-      </TouchableOpacity>
+      <Button title="Save Note" onPress={handleSubmit} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#121212' },
-  label: { color: '#fff', fontSize: 14, marginBottom: 8, fontWeight: '600' },
-  input: { backgroundColor: '#1e1e1e', color: '#fff', padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 16 },
+  container: { flex: 1, backgroundColor: '#121212', padding: 16 },
+  input: { backgroundColor: '#1E1E1E', color: '#fff', padding: 12, borderRadius: 8, marginBottom: 12 },
   textArea: { height: 120, textAlignVertical: 'top' },
-  button: { backgroundColor: '#007AFF', padding: 16, borderRadius: 8, alignItems: 'center' },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });

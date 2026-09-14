@@ -1,20 +1,20 @@
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { Stack } from 'expo-router';
-import { NotesProvider } from '../context/NotesContext';
+import { useNetworkSync } from '../hooks/useNetworkSync';
+import { asyncStoragePersister, queryClient } from '../services/queryClient';
+
+function MainNavigator() {
+  useNetworkSync(); // Initializes AppState and NetInfo monitors
+  return <Stack screenOptions={{ headerShown: false }} />;
+}
 
 export default function RootLayout() {
   return (
-    <NotesProvider>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen 
-          name="compose" 
-          options={{ 
-            presentation: 'modal',
-            headerShown: true,
-            title: 'New Note'
-          }} 
-        />
-      </Stack>
-    </NotesProvider>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister: asyncStoragePersister }}
+    >
+      <MainNavigator />
+    </PersistQueryClientProvider>
   );
 }
