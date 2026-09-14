@@ -13,10 +13,10 @@ export default function AssetCheckScreen() {
       <Text style={styles.dimText}>Dimensions: {resolved.width} x {resolved.height}</Text>
 
       {/* Render the density-checked asset */}
-      <Image 
-        source={require('../../assets/images/cats/check.png')} 
-        style={{ width: resolved.width / 2, height: resolved.height / 2, marginTop: 20 }}
-      />
+      <Image
+          source={require('../../assets/images/cats/check.png')}
+          style={{ width: resolved.width / 2, height: resolved.height / 2, marginTop: 20 }}
+        />
     </View>
   );
 }

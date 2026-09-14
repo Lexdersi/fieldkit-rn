@@ -56,10 +56,10 @@ export default function NotesListScreen() {
             onPress={() => router.push(`/notes/${item.id}`)}
           >
             <View style={styles.cardHeader}>
-              <Text style={styles.noteTitle} numberOfLines={1}>{item.title}</Text>
+              <Text style={styles.noteTitle}>{item.title}</Text>
               {item.pending && <Text style={styles.pendingBadge}>Pending Sync</Text>}
             </View>
-            {item.content ? <Text style={styles.noteSnippet} numberOfLines={1}>{item.content}</Text> : null}
+            {item.content ? <Text style={styles.noteSnippet}>{item.content}</Text> : null}
           </TouchableOpacity>
         )}
         ListEmptyComponent={
