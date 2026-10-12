@@ -22,16 +22,17 @@ export default function GalleryScreen() {
     async function checkAndPrefetchImages() {
       const statuses: Record<string, string> = {};
 
-      for (const photo of SAMPLE_PHOTOS) {
-        // Check initial cache state
-        const cacheState = await Image.queryCache(photo.url);
-        statuses[photo.id] = cacheState ? JSON.stringify(cacheState) : 'uncached';
+      // queryCache takes an array and returns { [url]: 'memory' | 'disk' | 'disk/memory' },
+      // with uncached URLs simply absent. It is undefined on web.
+      const cached = Image.queryCache ? await Image.queryCache(SAMPLE_PHOTOS.map((p) => p.url)) : {};
 
-        // Prefetch uncached images
+      for (const photo of SAMPLE_PHOTOS) {
+        const cacheState = cached[photo.url];
+        statuses[photo.id] = cacheState ?? 'uncached';
+
         if (!cacheState) {
           await Image.prefetch(photo.url);
-          const postState = await Image.queryCache(photo.url);
-          console.log(`[Image Prefetch]: Loaded and cached ${photo.title}`, postState);
+          if (__DEV__) console.log(`[Image Prefetch]: Loaded and cached ${photo.title}`);
         }
       }
 
@@ -43,7 +44,7 @@ export default function GalleryScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>FieldKit Gallery</Text>
+      <Text style={styles.header} accessibilityRole="header">FieldKit Gallery</Text>
       <Text style={styles.subHeader}>Zero-Shift Image Grid & Cache Inspector</Text>
 
       <FlatList
@@ -59,6 +60,9 @@ export default function GalleryScreen() {
               {/* Reserved aspect-ratio box prevents layout shift */}
               <View style={styles.imageWrapper}>
                 <Image
+                  accessible
+                  accessibilityRole="image"
+                  accessibilityLabel={hasFailed ? `${item.title}, image failed to load` : `Photo: ${item.title}`}
                   source={
                     hasFailed
                       ? require('../../assets/images/cats/check.png') // Fallback bundled asset
@@ -70,7 +74,10 @@ export default function GalleryScreen() {
                   onError={() => setFailedImages((prev) => ({ ...prev, [item.id]: true }))}
                 />
               </View>
-              <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+              {/* The image label already reads the title, so don't announce it twice */}
+              <Text style={styles.title} numberOfLines={1} importantForAccessibility="no" accessibilityElementsHidden>
+                {item.title}
+              </Text>
               <Text style={styles.cacheText}>
                 Cache: {cacheStatuses[item.id] || 'Checking...'}
               </Text>

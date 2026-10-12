@@ -38,8 +38,10 @@ export default function NotesListScreen() {
     fetchNotes();
   }, [fetchNotes]);
 
-  // WebSocket Live Updates Integration
+  // WebSocket Live Updates Integration (Day 7 drill). Dev only: on a physical device
+  // localhost is the phone itself, and Android release builds block cleartext ws://.
   useEffect(() => {
+    if (!__DEV__) return;
     const ws = new ReconnectingWebSocket('ws://localhost:8080');
 
     const unsubscribe = ws.subscribe((data) => {
@@ -55,7 +57,7 @@ export default function NotesListScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Text style={styles.header}>Field Notes</Text>
+      <Text style={styles.header} accessibilityRole="header">Field Notes</Text>
       
       {/* Action Buttons */}
       <View style={styles.actionRow}>
@@ -73,14 +75,16 @@ export default function NotesListScreen() {
       {/* 1. Loading State */}
       {loading && (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.subText}>Loading field notes...</Text>
+          <ActivityIndicator size="large" color="#007AFF" accessibilityLabel="Loading field notes" />
+          <Text style={styles.subText} importantForAccessibility="no" accessibilityElementsHidden>
+            Loading field notes...
+          </Text>
         </View>
       )}
 
       {/* 2. Error-with-Retry State */}
       {!loading && error && (
-        <View style={styles.centerContainer}>
+        <View style={styles.centerContainer} accessibilityLiveRegion="assertive">
           <Text style={styles.errorTitle}>Failed to load notes</Text>
           <Text style={styles.errorText}>{error}</Text>
           <Button title="Retry Request" onPress={fetchNotes} color="#FF3B30" />
@@ -91,12 +95,14 @@ export default function NotesListScreen() {
       {!loading && !error && (
         <FlatList
           data={notes}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => String(item.id)} // the API returns numeric ids
           contentContainerStyle={styles.listContainer}
           renderItem={({ item }) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.noteCard}
               onPress={() => router.push(`/notes/${item.id}`)}
+              accessibilityRole="button"
+              accessibilityLabel={`Open note: ${item.title}`}
             >
               <Text style={styles.noteTitle}>{item.title}</Text>
               {item.content ? <Text style={styles.noteSnippet} numberOfLines={1}>{item.content}</Text> : null}

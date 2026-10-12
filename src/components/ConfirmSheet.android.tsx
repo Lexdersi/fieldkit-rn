@@ -1,26 +1,30 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-
-interface ConfirmSheetProps {
-  visible: boolean;
-  title: string;
-  message?: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
+import type { ConfirmSheetProps } from './ConfirmSheet.types';
 
 export default function ConfirmSheet({ visible, title, message, onConfirm, onCancel }: ConfirmSheetProps) {
   if (!visible) return null;
 
   return (
-    <Modal transparent animationType="slide" visible={visible}>
+    <Modal transparent animationType="slide" visible={visible} onRequestClose={onCancel}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <Text style={styles.title}>{title}</Text>
+        {/* Keeps TalkBack focus inside the sheet instead of the screen behind it */}
+        <View style={styles.sheet} accessibilityViewIsModal>
+          <Text style={styles.title} accessibilityRole="header">{title}</Text>
           {message && <Text style={styles.message}>{message}</Text>}
-          <Pressable style={styles.confirmButton} onPress={onConfirm}>
+          <Pressable
+            style={styles.confirmButton}
+            onPress={onConfirm}
+            accessibilityRole="button"
+            accessibilityLabel={`Confirm: ${title}`}
+          >
             <Text style={styles.confirmText}>Confirm</Text>
           </Pressable>
-          <Pressable style={styles.cancelButton} onPress={onCancel}>
+          <Pressable
+            style={styles.cancelButton}
+            onPress={onCancel}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel"
+          >
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
         </View>

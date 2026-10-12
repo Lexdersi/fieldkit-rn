@@ -13,6 +13,8 @@ export default function RootLayout() {
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={{ persister: asyncStoragePersister }}
+      // Paused mutations are persisted by default; resume them once the cache is restored
+      onSuccess={() => queryClient.resumePausedMutations()}
     >
       <MainNavigator />
     </PersistQueryClientProvider>

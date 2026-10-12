@@ -3,12 +3,16 @@ import { Image, StyleSheet, View } from 'react-native';
 interface AvatarProps {
   uri: string;
   size?: number;
+  label?: string;
 }
 
-export function Avatar({ uri, size = 60 }: AvatarProps) {
+export function Avatar({ uri, size = 60, label }: AvatarProps) {
   return (
     <View style={[styles.container, { width: size, height: size, borderRadius: size / 2 }]}>
       <Image
+        accessible={Boolean(label)}
+        accessibilityRole="image"
+        accessibilityLabel={label}
         source={{ uri, cache: 'force-cache' }}
         style={styles.image}
         resizeMode="cover"

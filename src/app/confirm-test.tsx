@@ -1,35 +1,21 @@
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import ConfirmSheet from '../components/ConfirmSheet';
 
 export default function ConfirmTestScreen() {
   const [visible, setVisible] = useState(false);
   const [status, setStatus] = useState('Idle');
 
-  const handlePress = () => {
-    if (Platform.OS === 'ios') {
-      // iOS ActionSheetIOS is invoked directly via function call
-      ConfirmSheet({
-        title: 'Delete Note?',
-        onConfirm: () => setStatus('Deleted!'),
-        onCancel: () => setStatus('Cancelled'),
-      });
-    } else {
-      // Android uses the modal component state
-      setVisible(true);
-    }
-  };
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Platform Confirm Sheet Drill</Text>
-      <Text style={styles.status}>Status: {status}</Text>
-      
-<Pressable style={styles.button} onPress={handlePress}>
+      <Text style={styles.title} accessibilityRole="header">Platform Confirm Sheet Drill</Text>
+      <Text style={styles.status} accessibilityLiveRegion="polite">Status: {status}</Text>
+
+      <Pressable style={styles.button} onPress={() => setVisible(true)} accessibilityRole="button">
         <Text style={styles.buttonText}>Trigger Confirm Sheet</Text>
       </Pressable>
 
-      {/* Android Modal Component Render */}
+      {/* Same props on both platforms: ActionSheetIOS on iOS, Modal on Android */}
       <ConfirmSheet
         visible={visible}
         title="Delete Note?"

@@ -1,7 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { onlineManager, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Button, StyleSheet, TextInput, View } from 'react-native';
+import type { NewNote } from '../services/queryClient';
 
 export default function ComposeScreen() {
   const router = useRouter();
@@ -9,16 +10,10 @@ export default function ComposeScreen() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
 
+  // mutationFn comes from setMutationDefaults(['createNote']) in services/queryClient
   const createNoteMutation = useMutation({
-    mutationFn: async (newNote: { title: string; content: string }) => {
-      const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
-        method: 'POST',
-        body: JSON.stringify(newNote),
-        headers: { 'Content-Type': 'application/json' },
-      });
-      return response.json();
-    },
-    onMutate: async (newNote) => {
+    mutationKey: ['createNote'],
+    onMutate: async (newNote: NewNote) => {
       await queryClient.cancelQueries({ queryKey: ['notes'] });
       const previousNotes = queryClient.getQueryData(['notes']);
 
@@ -29,11 +24,12 @@ export default function ComposeScreen() {
 
       return { previousNotes };
     },
-    onError: (err, newNote, context: any) => {
+    onError: (err, newNote, context) => {
       if (context?.previousNotes) {
         queryClient.setQueryData(['notes'], context.previousNotes);
       }
-      Alert.alert('Offline Mode', 'Note saved locally and will sync when reconnected.');
+      // The text stays in the inputs so the user can retry
+      Alert.alert('Note not saved', 'The server rejected the note. Your text is still here, try again.');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] });
@@ -50,6 +46,13 @@ export default function ComposeScreen() {
         },
       }
     );
+
+    // Offline the mutation pauses rather than failing, and it is persisted with
+    // the query cache, so it survives an app restart and resumes on reconnect.
+    if (!onlineManager.isOnline()) {
+      Alert.alert('Saved on this device', 'You are offline. The note will sync when you reconnect.');
+      router.back();
+    }
   };
 
   return (
@@ -58,6 +61,7 @@ export default function ComposeScreen() {
         style={styles.input}
         placeholder="Note Title"
         placeholderTextColor="#888"
+        accessibilityLabel="Note title"
         value={title}
         onChangeText={setTitle}
       />
@@ -65,11 +69,17 @@ export default function ComposeScreen() {
         style={[styles.input, styles.textArea]}
         placeholder="Write your note content here..."
         placeholderTextColor="#888"
+        accessibilityLabel="Note content"
         multiline
         value={content}
         onChangeText={setContent}
       />
-      <Button title="Save Note" onPress={handleSubmit} />
+      <Button
+        title="Save Note"
+        onPress={handleSubmit}
+        // Announced as dimmed/disabled by VoiceOver and TalkBack until there is a title
+        disabled={!title.trim() || createNoteMutation.isPending}
+      />
     </View>
   );
 }

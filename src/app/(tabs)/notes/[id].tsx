@@ -40,10 +40,18 @@ export default function NoteDetailScreen() {
           },
         ]}
       >
-        <Text style={styles.headerTitle}>Note #{id}</Text>
-        <TouchableOpacity style={styles.blockButton} onPress={blockJsthread}>
-          <Text style={styles.blockButtonText}>Block JS (2s)</Text>
-        </TouchableOpacity>
+        <Text style={styles.headerTitle} accessibilityRole="header">Note #{id}</Text>
+        {/* Perf drill control for the Q2 measurement; never in a release build */}
+        {__DEV__ && (
+          <TouchableOpacity
+            style={styles.blockButton}
+            onPress={blockJsthread}
+            accessibilityRole="button"
+            accessibilityLabel="Block JavaScript thread for 2 seconds"
+          >
+            <Text style={styles.blockButtonText}>Block JS (2s)</Text>
+          </TouchableOpacity>
+        )}
       </Animated.View>
 
       <Animated.ScrollView

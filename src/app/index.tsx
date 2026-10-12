@@ -30,7 +30,12 @@ export default function NotesListScreen() {
       <View style={styles.centerContainer}>
         <Text style={styles.errorTitle}>Connection Error</Text>
         <Text style={styles.errorText}>Could not load notes. Showing cached data if available.</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => refetch()}
+          accessibilityRole="button"
+          accessibilityLabel="Retry loading notes"
+        >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -40,8 +45,13 @@ export default function NotesListScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.header}>Field Notes</Text>
-        <TouchableOpacity style={styles.addButton} onPress={() => router.push('/compose')}>
+        <Text style={styles.header} accessibilityRole="header">Field Notes</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => router.push('/compose')}
+          accessibilityRole="button"
+          accessibilityLabel="New note"
+        >
           <Text style={styles.addButtonText}>+ New Note</Text>
         </TouchableOpacity>
       </View>
@@ -51,9 +61,11 @@ export default function NotesListScreen() {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContainer}
         renderItem={({ item }) => (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.noteCard}
             onPress={() => router.push(`/notes/${item.id}`)}
+            accessibilityRole="button"
+            accessibilityLabel={`Open note: ${item.title}${item.pending ? ', waiting to sync' : ''}`}
           >
             <View style={styles.cardHeader}>
               <Text style={styles.noteTitle}>{item.title}</Text>
