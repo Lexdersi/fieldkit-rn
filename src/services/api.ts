@@ -54,7 +54,9 @@ export async function request<T>(path: string, options: ApiOptions = {}): Promis
       return data;
 
     } catch (error: any) {
-      const isNetworkError = error.name === 'AbortError' || error.message === 'Network request failed' || !error.status;
+      // Only timeouts and transport failures. A bad JSON body is not transient, and
+      // retrying it three times with backoff only delays the same error.
+      const isNetworkError = error.name === 'AbortError' || error.message === 'Network request failed';
       const status = error instanceof HttpError ? error.status : 0;
       
       const is5xx = status >= 500 && status < 600;

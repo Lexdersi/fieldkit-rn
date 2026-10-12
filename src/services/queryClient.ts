@@ -2,12 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { onlineManager, QueryClient } from '@tanstack/react-query';
-import { request } from './api';
-
-export interface NewNote {
-  title: string;
-  content: string;
-}
+import { registerNoteMutations } from '../features/notes/notesStore';
 
 // React Query assumes "online" on native unless told otherwise. Without this,
 // offline mutations fail instead of pausing, and the note is lost.
@@ -27,17 +22,18 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Registered at module level so a paused mutation restored from storage after
-// an app restart still has a mutationFn to resume with.
-queryClient.setMutationDefaults(['createNote'], {
-  mutationFn: (newNote: NewNote) =>
-    request('https://jsonplaceholder.typicode.com/posts', {
-      method: 'POST',
-      body: JSON.stringify(newNote),
-      headers: { 'Content-Type': 'application/json' },
-    }),
-});
+registerNoteMutations(queryClient);
 
 export const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
 });
+
+export const persistOptions = {
+  persister: asyncStoragePersister,
+  // The default maxAge is 24 h, after which the whole restored cache is discarded.
+  // Device-only notes live in this cache, so it must never expire on its own.
+  maxAge: Infinity,
+  // Bump when the cached shape changes; a mismatch drops the old cache instead of
+  // feeding stale shapes to new code.
+  buster: 'notes-v2',
+};

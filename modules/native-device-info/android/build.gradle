@@ -1,0 +1,44 @@
+// AGP and Kotlin come from the app's root build classpath, so no buildscript block:
+// pinning versions here is how libraries end up fighting the app's toolchain.
+apply plugin: "com.android.library"
+apply plugin: "org.jetbrains.kotlin.android"
+// Runs Codegen for this library from codegenConfig in ../package.json
+apply plugin: "com.facebook.react"
+
+def safeExt(name, fallback) {
+  return rootProject.ext.has(name) ? rootProject.ext.get(name) : fallback
+}
+
+android {
+  namespace "com.fieldkit.deviceinfo"
+  compileSdkVersion safeExt("compileSdkVersion", 36)
+
+  defaultConfig {
+    minSdkVersion safeExt("minSdkVersion", 24)
+    targetSdkVersion safeExt("targetSdkVersion", 36)
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}
+
+kotlin {
+  jvmToolchain(17)
+}
+
+repositories {
+  google()
+  mavenCentral()
+}
+
+dependencies {
+  implementation "com.facebook.react:react-android"
+}
+
+react {
+  jsRootDir = file("../src/")
+  libraryName = "NativeDeviceInfo"
+  codegenJavaPackageName = "com.fieldkit.deviceinfo"
+}

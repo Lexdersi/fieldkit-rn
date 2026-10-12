@@ -1,0 +1,27 @@
+{
+  "name": "@fieldkit/native-device-info",
+  "version": "0.1.0",
+  "description": "FieldKit Turbo Native Module: battery level, model, emulator check",
+  "main": "src/index.ts",
+  "react-native": "src/index.ts",
+  "types": "src/index.ts",
+  "license": "MIT",
+  "private": true,
+  "files": ["src", "android", "ios", "*.podspec", "react-native.config.js"],
+  "peerDependencies": {
+    "react-native": "*"
+  },
+  "codegenConfig": {
+    "name": "NativeDeviceInfoSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.fieldkit.deviceinfo"
+    },
+    "ios": {
+      "modulesProvider": {
+        "NativeDeviceInfo": "RCTNativeDeviceInfo"
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`NoteRow pending badge (small snapshot) 1`] = `
+<Text
+  style={
+    [
+      {
+        "borderRadius": 4,
+        "fontSize": 12,
+        "fontWeight": "600",
+        "paddingHorizontal": 6,
+        "paddingVertical": 2,
+      },
+      {
+        "backgroundColor": "#332200",
+        "color": "#FF9500",
+      },
+    ]
+  }
+>
+  Pending sync
+</Text>
+`;

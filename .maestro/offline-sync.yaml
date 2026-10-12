@@ -1,0 +1,24 @@
+# Day 15 E2E: create a note offline, reconnect, verify it synced.
+# Run against a release build on a connected Android device or emulator:
+#   npx expo run:android --variant release
+#   maestro test .maestro/offline-sync.yaml
+# Airplane mode needs an emulator or a rooted/test device; on a normal phone,
+# toggle it by hand at the two marked steps.
+appId: com.anonymous.hellorn
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Field Notes"
+- setAirplaneMode: enabled            # offline
+- tapOn: "New note"
+- tapOn: "Note title"
+- inputText: "Maestro offline note"
+- hideKeyboard
+- tapOn: "Save Note"
+- assertVisible: "Maestro offline note"
+- assertVisible: "Pending sync"
+- setAirplaneMode: disabled           # back online → paused mutation resumes
+- extendedWaitUntil:
+    notVisible: "Pending sync"
+    timeout: 20000
+- assertVisible: "Maestro offline note"

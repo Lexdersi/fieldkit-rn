@@ -26,7 +26,7 @@ export class ReconnectingWebSocket {
       try {
         const data = JSON.parse(event.data);
         this.listeners.forEach((listener) => listener(data));
-      } catch (err) {
+      } catch {
         if (__DEV__) console.log('[WebSocket] Failed to parse message', event.data);
       }
     };

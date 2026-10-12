@@ -1,12 +1,15 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useRef } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Stack, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
+import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { formatCoords } from '../../../features/notes/noteLogic';
+import { useNotes } from '../../../features/notes/notesStore';
 
 export default function NoteDetailScreen() {
-  const { id } = useLocalSearchParams();
-  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const note = useNotes().notes.find((n) => n.id === id);
 
-  const scrollY = useRef(new Animated.Value(0)).current;
+  // Created once, without reading a ref during render
+  const [scrollY] = useState(() => new Animated.Value(0));
 
   const headerTranslateY = scrollY.interpolate({
     inputRange: [0, 100],
@@ -40,7 +43,9 @@ export default function NoteDetailScreen() {
           },
         ]}
       >
-        <Text style={styles.headerTitle} accessibilityRole="header">Note #{id}</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header" numberOfLines={1}>
+          {note?.title ?? 'Note not found'}
+        </Text>
         {/* Perf drill control for the Q2 measurement; never in a release build */}
         {__DEV__ && (
           <TouchableOpacity
@@ -62,17 +67,31 @@ export default function NoteDetailScreen() {
         )}
         scrollEventThrottle={16}
       >
-        <Text style={styles.bodyText}>
-          Scroll up and down to see the native-driver collapsing header in action.
-        </Text>
-        {Array.from({ length: 20 }).map((_, index) => (
-          <View key={index} style={styles.dummyCard}>
-            <Text style={styles.dummyText}>Field Note Paragraph Item {index + 1}</Text>
-            <Text style={styles.dummySubtext}>
-              Testing 60fps smooth scrolling performance on the UI thread.
-            </Text>
-          </View>
-        ))}
+        {note?.photo ? (
+          <Image
+            source={{ uri: note.photo.uri }}
+            style={styles.photo}
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel={
+              note.photo.coords ? `Field photo taken at ${formatCoords(note.photo.coords)}` : 'Field photo, no location'
+            }
+          />
+        ) : null}
+        {note?.photo ? (
+          <Text style={styles.metaText}>
+            {note.photo.coords ? formatCoords(note.photo.coords) : note.photo.locationNote}
+          </Text>
+        ) : null}
+        <Text style={styles.bodyText}>{note?.content || 'No content.'}</Text>
+
+        {/* Day 11/Q2 scroll test: enough content to drive the collapsing header. Dev only */}
+        {__DEV__ &&
+          Array.from({ length: 20 }).map((_, index) => (
+            <View key={index} style={styles.dummyCard}>
+              <Text style={styles.dummyText}>Scroll test item {index + 1}</Text>
+            </View>
+          ))}
       </Animated.ScrollView>
     </View>
   );
@@ -96,12 +115,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#2a2a2a',
   },
-  headerTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  headerTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', flex: 1, marginRight: 8 },
   blockButton: { backgroundColor: '#FF3B30', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
   blockButtonText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   scrollContent: { paddingTop: 110, paddingHorizontal: 16, paddingBottom: 40 },
-  bodyText: { color: '#aaa', fontSize: 16, marginBottom: 16 },
+  bodyText: { color: '#ddd', fontSize: 16, lineHeight: 24, marginBottom: 16 },
+  photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 8, marginBottom: 8, backgroundColor: '#2a2a2a' },
+  metaText: { color: '#888', fontSize: 13, marginBottom: 16 },
   dummyCard: { backgroundColor: '#1a1a1a', padding: 16, borderRadius: 8, marginBottom: 12 },
   dummyText: { color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 4 },
-  dummySubtext: { color: '#888', fontSize: 13 },
 });

@@ -1,133 +1,115 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Button, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { AccessibilityInfo, ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { HttpError, request } from '../../../services/api';
-import { ReconnectingWebSocket } from '../../../services/websocket';
-
-interface Note {
-  id: string;
-  title: string;
-  content?: string;
-}
+import ConfirmSheet from '../../../components/ConfirmSheet';
+import { noteA11yLabel } from '../../../features/notes/noteLogic';
+import { NoteRow } from '../../../features/notes/NoteRow';
+import { archiveNote, deleteNote, useNotes } from '../../../features/notes/notesStore';
+import { useNow } from '../../../hooks/useNow';
+import { SwipeRow } from '../../../features/notes/swipe/SwipeRow';
+import type { Note } from '../../../features/notes/types';
 
 export default function NotesListScreen() {
   const router = useRouter();
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { notes, isLoading, serverError, refetch, isRefetching } = useNotes();
+  const [pendingDelete, setPendingDelete] = useState<Note | null>(null);
+  const now = useNow();
 
-  const fetchNotes = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await request<Note[]>('https://jsonplaceholder.typicode.com/posts');
-      setNotes(data);
-    } catch (err: any) {
-      if (err instanceof HttpError) {
-        setError(`Server Error (${err.status}): ${err.body}`);
-      } else {
-        setError(err.message || 'An unexpected error occurred.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchNotes();
-  }, [fetchNotes]);
-
-  // WebSocket Live Updates Integration (Day 7 drill). Dev only: on a physical device
-  // localhost is the phone itself, and Android release builds block cleartext ws://.
-  useEffect(() => {
-    if (!__DEV__) return;
-    const ws = new ReconnectingWebSocket('ws://localhost:8080');
-
-    const unsubscribe = ws.subscribe((data) => {
-      console.log('[Live Update Received]:', data);
-      // Optional: Handle incoming real-time notes updates here
-    });
-
-    return () => {
-      unsubscribe();
-      ws.close();
-    };
-  }, []);
+  const archive = (note: Note) => {
+    archiveNote(queryClient, note.id);
+    AccessibilityInfo.announceForAccessibility(`Archived ${note.title}`);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Text style={styles.header} accessibilityRole="header">Field Notes</Text>
-      
-      {/* Action Buttons */}
-      <View style={styles.actionRow}>
-        <Button 
-          title="Open Note #7" 
-          onPress={() => router.push('/notes/7')} 
-        />
-        <Button 
-          title="Compose New" 
-          onPress={() => router.push('/compose')} 
-          color="#007AFF"
-        />
+      <View style={styles.headerRow}>
+        <Text style={styles.header} accessibilityRole="header">
+          Field Notes
+        </Text>
+        <Pressable
+          style={styles.addButton}
+          onPress={() => router.push('/compose')}
+          accessibilityRole="button"
+          accessibilityLabel="New note"
+        >
+          <Text style={styles.addButtonText}>+ New Note</Text>
+        </Pressable>
       </View>
 
-      {/* 1. Loading State */}
-      {loading && (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#007AFF" accessibilityLabel="Loading field notes" />
-          <Text style={styles.subText} importantForAccessibility="no" accessibilityElementsHidden>
-            Loading field notes...
+      {/* Server failed but notes on the device still show: a banner, not a dead end */}
+      {serverError ? (
+        <View style={styles.banner} accessibilityLiveRegion="polite">
+          <Text style={styles.bannerText}>
+            {"Can't reach the server. Showing notes saved on this device."}
           </Text>
+          <Pressable onPress={() => refetch()} accessibilityRole="button" accessibilityLabel="Retry loading notes">
+            <Text style={styles.bannerAction}>Retry</Text>
+          </Pressable>
         </View>
-      )}
+      ) : null}
 
-      {/* 2. Error-with-Retry State */}
-      {!loading && error && (
-        <View style={styles.centerContainer} accessibilityLiveRegion="assertive">
-          <Text style={styles.errorTitle}>Failed to load notes</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <Button title="Retry Request" onPress={fetchNotes} color="#FF3B30" />
+      {isLoading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#007AFF" accessibilityLabel="Loading field notes" />
         </View>
-      )}
-
-      {/* 3. Success State */}
-      {!loading && !error && (
+      ) : (
         <FlatList
           data={notes}
-          keyExtractor={(item) => String(item.id)} // the API returns numeric ids
-          contentContainerStyle={styles.listContainer}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          onRefresh={refetch}
+          refreshing={isRefetching}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.noteCard}
+            <SwipeRow
+              label={noteA11yLabel(item, now)}
               onPress={() => router.push(`/notes/${item.id}`)}
-              accessibilityRole="button"
-              accessibilityLabel={`Open note: ${item.title}`}
+              onArchive={() => archive(item)}
+              onDelete={() => setPendingDelete(item)}
             >
-              <Text style={styles.noteTitle}>{item.title}</Text>
-              {item.content ? <Text style={styles.noteSnippet} numberOfLines={1}>{item.content}</Text> : null}
-            </TouchableOpacity>
+              <NoteRow note={item} now={now} />
+            </SwipeRow>
           )}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No field notes found.</Text>
-          }
+          ListEmptyComponent={<Text style={styles.empty}>No field notes yet.</Text>}
         />
       )}
+
+      <ConfirmSheet
+        visible={pendingDelete !== null}
+        title="Delete note?"
+        message={pendingDelete ? `"${pendingDelete.title}" will be removed from this device.` : undefined}
+        onConfirm={() => {
+          if (pendingDelete) {
+            deleteNote(queryClient, pendingDelete.id);
+            AccessibilityInfo.announceForAccessibility(`Deleted ${pendingDelete.title}`);
+          }
+          setPendingDelete(null);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121212', padding: 16 },
-  header: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
-  actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  subText: { color: '#888', marginTop: 10 },
-  errorTitle: { color: '#FF3B30', fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
-  errorText: { color: '#aaa', textAlign: 'center', marginBottom: 16 },
-  listContainer: { paddingBottom: 20 },
-  noteCard: { backgroundColor: '#1E1E1E', padding: 16, borderRadius: 8, marginBottom: 12 },
-  noteTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  noteSnippet: { color: '#888', fontSize: 14, marginTop: 4 },
-  emptyText: { color: '#888', textAlign: 'center', marginTop: 40 }
+  container: { flex: 1, backgroundColor: '#121212', paddingHorizontal: 16 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12 },
+  header: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
+  addButton: { backgroundColor: '#007AFF', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 6 },
+  addButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2a1f00',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  bannerText: { color: '#FFCC66', flex: 1, marginRight: 12 },
+  bannerAction: { color: '#fff', fontWeight: '700', padding: 4 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  list: { paddingBottom: 20 },
+  empty: { color: '#888', textAlign: 'center', marginTop: 40 },
 });

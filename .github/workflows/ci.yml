@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Gitignored and normally written by `expo start`; tsc needs it for CSS module types
+      - run: echo '/// <reference types="expo/types" />' > expo-env.d.ts
+      # Babel strips types, so the bundle builds with type errors. This is the only enforcement.
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npx jest --ci
